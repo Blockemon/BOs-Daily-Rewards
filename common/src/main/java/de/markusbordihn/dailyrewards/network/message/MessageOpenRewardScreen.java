@@ -23,57 +23,45 @@ import de.markusbordihn.dailyrewards.Constants;
 import de.markusbordihn.dailyrewards.data.RewardScreenType;
 import de.markusbordihn.dailyrewards.rewards.RewardsScreen;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
-public class MessageOpenRewardScreen extends ModMessage<ServerGamePacketListenerImpl> {
+public record MessageOpenRewardScreen(RewardScreenType rewardScreenType) implements CustomPacketPayload {
 
-  protected static final Logger log = LogManager.getLogger(Constants.LOG_NAME);
+    private static final Logger log = LogManager.getLogger(Constants.LOG_NAME);
 
-  protected RewardScreenType rewardScreenType;
+    public static final Type<MessageOpenRewardScreen> TYPE =
+        new Type<>(ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "open_reward_screen"));
 
-  public MessageOpenRewardScreen() {}
+    public static final StreamCodec<FriendlyByteBuf, MessageOpenRewardScreen> CODEC =
+        StreamCodec.of(
+            (buf, msg) -> buf.writeEnum(msg.rewardScreenType),                // encoder
+            buf -> new MessageOpenRewardScreen(buf.readEnum(RewardScreenType.class)) // decoder
+        );
 
-  public MessageOpenRewardScreen(RewardScreenType rewardScreenType) {
-    this.rewardScreenType = rewardScreenType;
-  }
-
-  @Override
-  public void write(FriendlyByteBuf buffer) {
-    buffer.writeEnum(this.rewardScreenType);
-  }
-
-  @Override
-  public void read(FriendlyByteBuf buffer) {
-    this.rewardScreenType = buffer.readEnum(RewardScreenType.class);
-  }
-
-  @Override
-  public void onReceive(ServerGamePacketListenerImpl listener) {
-    ServerPlayer player = listener.getPlayer();
-
-    // Validate reward screen type
-    RewardScreenType rewardScreenType = this.rewardScreenType;
-    if (rewardScreenType == null) {
-      log.warn(
-          "Unable to open reward screen for player {} due to missing reward screen type!", player);
-      return;
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    // Open reward screen
-    log.debug("Opening reward screen for player {} with type {} ...", player, rewardScreenType);
+    public void handle(ServerPlayer player) {
+        if (rewardScreenType == null) {
+            log.warn("Unable to open reward screen for player {} due to missing reward screen type!", player);
+            return;
+        }
 
-    switch (rewardScreenType) {
-      case COMPACT -> RewardsScreen.openRewardCompactMenuForPlayer(player);
-      case DEFAULT_OVERVIEW -> RewardsScreen.openRewardOverviewMenuForPlayer(player);
-      case SPECIAL_OVERVIEW -> RewardsScreen.openRewardSpecialOverviewMenuForPlayer(player);
-      default ->
-          log.warn(
-              "Unable to open reward screen for player {} due to unknown reward screen type {}!",
-              player,
-              rewardScreenType);
+        log.debug("Opening reward screen for player {} with type {} ...", player, rewardScreenType);
+
+        switch (rewardScreenType) {
+            case COMPACT -> RewardsScreen.openRewardCompactMenuForPlayer(player);
+            case DEFAULT_OVERVIEW -> RewardsScreen.openRewardOverviewMenuForPlayer(player);
+            case SPECIAL_OVERVIEW -> RewardsScreen.openRewardSpecialOverviewMenuForPlayer(player);
+            default -> log.warn("Unknown reward screen type {} for player {}!", rewardScreenType, player);
+        }
     }
-  }
 }

@@ -22,6 +22,7 @@ package de.markusbordihn.dailyrewards.network;
 import de.markusbordihn.dailyrewards.Constants;
 import de.markusbordihn.dailyrewards.data.RewardScreenType;
 import de.markusbordihn.dailyrewards.network.message.MessageOpenRewardScreen;
+import dev.architectury.networking.NetworkManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -32,7 +33,7 @@ public class NetworkMessage {
   /** Open Reward Screen */
   public static void openRewardScreen(RewardScreenType rewardScreenType) {
     if (rewardScreenType != null) {
-      NetworkHandler.INSTANCE.sendToServer(new MessageOpenRewardScreen(rewardScreenType));
+        NetworkManager.sendToServer(new MessageOpenRewardScreen(rewardScreenType));
     }
   }
 }

@@ -27,15 +27,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 public class RewardData extends SavedData {
 
@@ -59,7 +64,7 @@ public class RewardData extends SavedData {
     this.setDirty();
   }
 
-  public static void prepare(MinecraftServer server) {
+    public static void prepare(MinecraftServer server) {
     // Make sure we preparing the data only once for the same server!
     if (server == null || server == RewardData.server && RewardData.data != null) {
       return;
@@ -74,7 +79,7 @@ public class RewardData extends SavedData {
       RewardData.data =
           serverLevel
               .getDataStorage()
-              .computeIfAbsent(RewardData::load, RewardData::new, RewardData.getFileId());
+              .computeIfAbsent(new SavedData.Factory<>(RewardData::new, RewardData::load, DataFixTypes.SAVED_DATA_SCOREBOARD), RewardData.getFileId());
     } else {
       log.error(
           "{} unable to get server level {} for storing data!", Constants.LOG_NAME, serverLevel);
@@ -106,7 +111,9 @@ public class RewardData extends SavedData {
     if (compoundTag.contains(ITEM_LIST_TAG)) {
       ListTag itemListTag = compoundTag.getList(ITEM_LIST_TAG, 10);
       for (int i = 0; i < itemListTag.size(); ++i) {
-        ItemStack itemStack = ItemStack.of(itemListTag.getCompound(i));
+        CompoundTag tag = itemListTag.getCompound(i);
+        if (!tag.contains("id")) continue;
+        ItemStack itemStack = ItemStack.parse(lookup(), itemListTag.getCompound(i)).orElse(ItemStack.EMPTY);
         rewardItems.add(itemStack);
       }
     } else {
@@ -120,7 +127,9 @@ public class RewardData extends SavedData {
     if (compoundTag.contains(ITEM_LIST_TAG)) {
       ListTag itemListTag = compoundTag.getList(ITEM_LIST_TAG, 10);
       for (int i = 0; i < itemListTag.size(); ++i) {
-        ItemStack itemStack = ItemStack.of(itemListTag.getCompound(i));
+        CompoundTag tag = itemListTag.getCompound(i);
+        if (!tag.contains("id")) continue;
+        ItemStack itemStack = ItemStack.parse(lookup(), itemListTag.getCompound(i)).orElse(ItemStack.EMPTY);
         rewardItems.add(itemStack);
       }
     } else {
@@ -129,7 +138,7 @@ public class RewardData extends SavedData {
     return rewardItems;
   }
 
-  public static RewardData load(CompoundTag compoundTag) {
+  public static RewardData load(CompoundTag compoundTag, HolderLookup.Provider provider) {
     RewardData rewardData = new RewardData();
     log.info("{} loading reward data ... {}", Constants.LOG_NAME, compoundTag);
 
@@ -142,7 +151,9 @@ public class RewardData extends SavedData {
         ListTag itemListTag = rewardTag.getList(ITEMS_TAG, 10);
         String yearMonthKey = rewardTag.getString(YEAR_MONTH_TAG);
         for (int i2 = 0; i2 < itemListTag.size(); ++i2) {
-          ItemStack itemStack = ItemStack.of(itemListTag.getCompound(i2));
+          CompoundTag tag = itemListTag.getCompound(i2);
+          if (!tag.contains("id")) continue;
+          ItemStack itemStack = ItemStack.parse(lookup(), tag).orElse(ItemStack.EMPTY);
           rewardItems.add(itemStack);
         }
         rewardItemsMap.put(yearMonthKey, rewardItems);
@@ -165,7 +176,9 @@ public class RewardData extends SavedData {
         ListTag itemListTag = rewardTag.getList(ITEMS_TAG, 10);
         String yearMonthKey = rewardTag.getString(YEAR_MONTH_TAG);
         for (int i2 = 0; i2 < itemListTag.size(); ++i2) {
-          ItemStack itemStack = ItemStack.of(itemListTag.getCompound(i2));
+          CompoundTag tag = itemListTag.getCompound(i2);
+          if (!tag.contains("id")) continue;
+          ItemStack itemStack = ItemStack.parse(lookup(), tag).orElse(ItemStack.EMPTY);
           rewardItems.add(itemStack);
         }
         specialRewardItemsMap.put(yearMonthKey, rewardItems);
@@ -181,13 +194,25 @@ public class RewardData extends SavedData {
     return rewardData;
   }
 
+  private static boolean allEmpty(List<ItemStack> list) {
+      if (list == null || list.isEmpty()) return true;
+      for (ItemStack s : list) {
+          if (s != null && !s.isEmpty()) return false;
+      }
+      return true;
+  }
+
   public List<ItemStack> getRewardsFor(int year, int month) {
-    String key = getKeyId(year, month);
-    List<ItemStack> rewards = rewardItemsMap.get(key);
-    if (rewards != null && rewards.isEmpty()) {
-      rewardItemsMap.remove(key);
-    }
-    return rewardItemsMap.computeIfAbsent(key, id -> Rewards.calculateRewardItemsForMonth(month));
+      String key = getKeyId(year, month);
+      List<ItemStack> rewards = rewardItemsMap.get(key);
+      if (rewards == null || rewards.isEmpty() || allEmpty(rewards)) {
+          rewards = Rewards.calculateRewardItemsForMonth(month);
+          int days = Rewards.getDaysPerMonth(year, month);
+          while (rewards.size() < days) rewards.add(Rewards.getNormalFillItem());
+          if (rewards.size() > days) rewards = new ArrayList<>(rewards.subList(0, days));
+          rewardItemsMap.put(key, rewards);
+      }
+      return rewards;
   }
 
   public List<ItemStack> getRewardsForMonth(int month) {
@@ -212,8 +237,9 @@ public class RewardData extends SavedData {
     CompoundTag syncData = new CompoundTag();
     ListTag itemListTag = new ListTag();
     for (ItemStack itemStack : rewardItems) {
+      ItemStack toSave = itemStack.isEmpty() ? Rewards.getNormalFillItem() : itemStack;
       CompoundTag itemStackTag = new CompoundTag();
-      itemStack.save(itemStackTag);
+      toSave.save(server.registryAccess(), itemStackTag);
       itemListTag.add(itemStackTag);
     }
     syncData.put(ITEM_LIST_TAG, itemListTag);
@@ -233,7 +259,11 @@ public class RewardData extends SavedData {
     String key = getKeyId(year, month);
     List<ItemStack> specialRewards = specialRewardItemsMap.get(key);
     if (specialRewards != null && specialRewards.isEmpty()) {
-      specialRewardItemsMap.remove(key);
+        specialRewards = Rewards.calculateRewardItemsForMonth(month);
+        int days = Rewards.getDaysPerMonth(year, month);
+        while (specialRewards.size() < days) specialRewards.add(Rewards.getNormalFillItem());
+        if (specialRewards.size() > days) specialRewards = new ArrayList<>(specialRewards.subList(0, days));
+        specialRewardItemsMap.put(key, specialRewards);
     }
     return specialRewardItemsMap.computeIfAbsent(
         key, id -> SpecialRewards.calculateSpecialRewardItemsForMonth(month));
@@ -252,8 +282,9 @@ public class RewardData extends SavedData {
     CompoundTag syncData = new CompoundTag();
     ListTag itemListTag = new ListTag();
     for (ItemStack itemStack : rewardItems) {
+      ItemStack toSave = itemStack.isEmpty() ? Rewards.getNormalFillItem() : itemStack;
       CompoundTag itemStackTag = new CompoundTag();
-      itemStack.save(itemStackTag);
+      toSave.save(server.registryAccess(), itemStackTag);
       itemListTag.add(itemStackTag);
     }
     syncData.put(ITEM_LIST_TAG, itemListTag);
@@ -295,8 +326,17 @@ public class RewardData extends SavedData {
     this.setDirty();
   }
 
+  private static HolderLookup.Provider lookup() {
+      if (server != null) {
+          return server.registryAccess();
+      }
+
+      assert Minecraft.getInstance().level != null;
+      return Minecraft.getInstance().level.registryAccess();
+  }
+
   @Override
-  public CompoundTag save(CompoundTag compoundTag) {
+  public @NotNull CompoundTag save(CompoundTag compoundTag, HolderLookup.Provider provider) {
 
     // Saving rewards items per year-month
     log.info("{} saving reward data ... {}", Constants.LOG_NAME, rewardItemsMap);
@@ -311,12 +351,11 @@ public class RewardData extends SavedData {
         ItemStack itemStack = rewardItems.get(i);
         if (itemStack.isEmpty()) {
 
-          log.error(
-              "Reward item for month {} and day {} is empty, will fill item!", reward.getKey(), i);
+          log.error("Reward item for month {} and day {} is empty, will fill item!", reward.getKey(), i);
           itemStack = Rewards.getNormalFillItem();
         }
         CompoundTag itemStackTag = new CompoundTag();
-        itemStack.save(itemStackTag);
+        itemStack.save(server.registryAccess(), itemStackTag);
         itemListTag.add(itemStackTag);
       }
       if (!itemListTag.isEmpty()) {
@@ -346,9 +385,10 @@ public class RewardData extends SavedData {
         ItemStack itemStack = rewardItems.get(i);
         if (itemStack.isEmpty()) {
           log.info("Special reward item for month {} and day {} is empty.", reward.getKey(), i);
+          itemStack = Rewards.getNormalFillItem();
         }
         CompoundTag itemStackTag = new CompoundTag();
-        itemStack.save(itemStackTag);
+        itemStack.save(server.registryAccess(), itemStackTag);
         itemListTag.add(itemStackTag);
       }
       if (!itemListTag.isEmpty()) {

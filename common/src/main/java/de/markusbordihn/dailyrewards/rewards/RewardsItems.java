@@ -58,7 +58,7 @@ public class RewardsItems {
       }
 
       // Verify that the item exists in the registry.
-      Item item = BuiltInRegistries.ITEM.getOptional(new ResourceLocation(itemName)).orElse(null);
+      Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(itemName)).orElse(null);
       if (item == null || item == Items.AIR) {
         log.error("Unable to find reward item {} in the registry!", itemName);
       } else {

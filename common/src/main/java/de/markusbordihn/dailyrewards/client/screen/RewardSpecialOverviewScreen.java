@@ -26,6 +26,7 @@ import de.markusbordihn.dailyrewards.network.NetworkMessage;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.components.WidgetSprites;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 
@@ -51,12 +52,7 @@ public class RewardSpecialOverviewScreen extends RewardOverviewScreen<RewardSpec
                   this.topPos + 18,
                   32,
                   28,
-                  96,
-                  64,
-                  28,
-                  Constants.TEXTURE_TABS,
-                  256,
-                  256,
+                  new WidgetSprites(Constants.TEXTURE_TAB_RIGHT, Constants.TEXTURE_TAB_RIGHT),
                   button -> NetworkMessage.openRewardScreen(RewardScreenType.DEFAULT_OVERVIEW)));
       this.openDefaultRewardsOverviewButton.setTooltip(
           Tooltip.create(

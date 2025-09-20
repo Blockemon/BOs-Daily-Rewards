@@ -25,7 +25,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 
 public class RewardSlotItem extends Item {
 
@@ -37,11 +36,10 @@ public class RewardSlotItem extends Item {
   }
 
   @Override
-  public void appendHoverText(
-      ItemStack itemStack, Level level, List<Component> tooltipList, TooltipFlag tooltipFlag) {
+  public void appendHoverText(ItemStack itemStack, TooltipContext tooltipContext, List<Component> list, TooltipFlag tooltipFlag) {
     if (this.descriptionTextId == null || this.descriptionTextId.isEmpty()) {
       return;
     }
-    tooltipList.add(Component.translatable(Constants.TEXT_PREFIX + this.descriptionTextId));
+    list.add(Component.translatable(Constants.TEXT_PREFIX + this.descriptionTextId));
   }
 }

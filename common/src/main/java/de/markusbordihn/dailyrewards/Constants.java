@@ -46,19 +46,21 @@ public final class Constants {
   public static final int FONT_COLOR_WHITE = 16777215;
   // Textures
   public static final ResourceLocation TEXTURE_COMPACT_SCREEN =
-      new ResourceLocation(Constants.MOD_ID, "textures/container/compact_screen.png");
+      ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "textures/container/compact_screen.png");
   public static final ResourceLocation TEXTURE_COMPACT_SCREEN_COMBINED =
-      new ResourceLocation(Constants.MOD_ID, "textures/container/compact_screen_combined.png");
+      ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "textures/container/compact_screen_combined.png");
   public static final ResourceLocation TEXTURE_GENERIC_54 =
-      new ResourceLocation(MINECRAFT_PREFIX, "textures/gui/container/generic_54.png");
-  public static final ResourceLocation TEXTURE_TABS =
-      new ResourceLocation(MINECRAFT_PREFIX, "textures/gui/advancements/tabs.png");
+      ResourceLocation.fromNamespaceAndPath(MINECRAFT_PREFIX, "textures/gui/container/generic_54.png");
+  public static final ResourceLocation TEXTURE_TAB_LEFT =
+      ResourceLocation.fromNamespaceAndPath(MINECRAFT_PREFIX, "textures/gui/sprites/advancements/tab_left_top.png");
+    public static final ResourceLocation TEXTURE_TAB_RIGHT =
+        ResourceLocation.fromNamespaceAndPath(MINECRAFT_PREFIX, "textures/gui/sprites/advancements/tab_right_top.png");
   public static final ResourceLocation TEXTURE_ICONS =
-      new ResourceLocation(Constants.MOD_ID, "textures/container/icons.png");
+      ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "textures/container/icons.png");
   public static final ResourceLocation TEXTURE_OVERVIEW_SCREEN =
-      new ResourceLocation(Constants.MOD_ID, "textures/container/overview_screen.png");
+      ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "textures/container/overview_screen.png");
   public static final ResourceLocation TEXTURE_SPECIAL_OVERVIEW_SCREEN =
-      new ResourceLocation(Constants.MOD_ID, "textures/container/special_overview_screen.png");
+      ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "textures/container/special_overview_screen.png");
 
   private Constants() {}
 }

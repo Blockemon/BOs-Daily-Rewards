@@ -21,53 +21,31 @@ package de.markusbordihn.dailyrewards.network;
 
 import de.markusbordihn.dailyrewards.Constants;
 import de.markusbordihn.dailyrewards.network.message.MessageOpenRewardScreen;
-import de.markusbordihn.dailyrewards.network.message.ModMessage;
-import dev.architectury.networking.NetworkChannel;
 import dev.architectury.networking.NetworkManager;
 import dev.architectury.platform.Platform;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import net.minecraft.network.PacketListener;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class NetworkHandler {
 
-  public static final Logger log = LogManager.getLogger(Constants.LOG_NAME);
+    public static final Logger log = LogManager.getLogger(Constants.LOG_NAME);
 
-  public static final NetworkChannel INSTANCE =
-      NetworkChannel.create(new ResourceLocation(Constants.MOD_ID, "network"));
+    private NetworkHandler() {}
 
-  protected NetworkHandler() {}
+    public static void registerNetworkHandler() {
+        log.info("{} Network Handler for {} ...", Constants.LOG_REGISTER_PREFIX, Platform.getEnvironment());
 
-  public static void registerNetworkHandler() {
-    log.info(
-        "{} Network Handler for {} ...", Constants.LOG_REGISTER_PREFIX, Platform.getEnvironment());
-
-    NetworkHandler.register(
-        MessageOpenRewardScreen.class,
-        MessageOpenRewardScreen::new,
-        context -> ((ServerPlayer) context.getPlayer()).connection);
-  }
-
-  public static <R extends PacketListener, T extends ModMessage<R>> void register(
-      Class<T> type,
-      Supplier<T> packetSupplier,
-      Function<NetworkManager.PacketContext, R> contextMapper) {
-    INSTANCE.register(
-        type,
-        ModMessage::write,
-        packetByteBuf -> {
-          T packet = packetSupplier.get();
-          packet.read(packetByteBuf);
-          return packet;
-        },
-        (packet, contextSupplier) -> {
-          if (contextMapper != null) {
-            packet.handle(contextMapper.apply(contextSupplier.get()));
-          }
-        });
-  }
+        NetworkManager.registerReceiver(
+            NetworkManager.Side.C2S,
+            MessageOpenRewardScreen.TYPE,
+            MessageOpenRewardScreen.CODEC,
+            (message, context) -> {
+                context.queue(() -> {
+                    ServerPlayer player = (ServerPlayer) context.getPlayer();
+                    message.handle(player);
+                });
+            }
+        );
+    }
 }

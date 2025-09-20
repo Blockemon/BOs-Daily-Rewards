@@ -186,7 +186,7 @@ public class Rewards {
   }
 
   public static ItemStack getLootBagFillItem() {
-    List<ItemStack> lootBagFillItems = getRareFillItems();
+    List<ItemStack> lootBagFillItems = getLootBagFillItems();
     return lootBagFillItems.get(random.nextInt(lootBagFillItems.size()));
   }
 

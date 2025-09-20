@@ -29,15 +29,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 
 public class RewardUserData extends SavedData {
 
@@ -79,8 +83,8 @@ public class RewardUserData extends SavedData {
       RewardUserData.data =
           serverLevel
               .getDataStorage()
-              .computeIfAbsent(
-                  RewardUserData::load, RewardUserData::new, RewardUserData.getFileId());
+              .computeIfAbsent(new SavedData.Factory<>(RewardUserData::new, RewardUserData::load, DataFixTypes.SAVED_DATA_SCOREBOARD), RewardUserData.getFileId());
+
     } else {
       log.error(
           "{} unable to get server level {} for storing data!", Constants.LOG_NAME, serverLevel);
@@ -122,14 +126,24 @@ public class RewardUserData extends SavedData {
     if (compoundTag.contains(ITEM_LIST_TAG)) {
       ListTag itemListTag = compoundTag.getList(ITEM_LIST_TAG, 10);
       for (int i = 0; i < itemListTag.size(); ++i) {
-        ItemStack itemStack = ItemStack.of(itemListTag.getCompound(i));
+        CompoundTag tag = itemListTag.getCompound(i);
+        if (!tag.contains("id")) {
+            continue;
+        }
+        ItemStack itemStack = ItemStack.parse(lookup(), itemListTag.getCompound(i)).orElse(ItemStack.EMPTY);
         rewardItems.add(itemStack);
       }
     }
     return rewardItems;
   }
 
-  public static RewardUserData load(CompoundTag compoundTag) {
+  private static HolderLookup.Provider lookup() {
+      if (server != null) return server.registryAccess();
+      assert net.minecraft.client.Minecraft.getInstance().level != null;
+      return net.minecraft.client.Minecraft.getInstance().level.registryAccess();
+  }
+
+  public static RewardUserData load(CompoundTag compoundTag, HolderLookup.Provider provider) {
     RewardUserData rewardData = new RewardUserData();
     log.info("{} loading reward user data ... {}", Constants.LOG_NAME, compoundTag);
 
@@ -154,7 +168,9 @@ public class RewardUserData extends SavedData {
         List<ItemStack> rewardItems = new ArrayList<>();
         ListTag itemListTag = rewardUserTag.getList(ITEMS_TAG, 10);
         for (int i2 = 0; i2 < itemListTag.size(); ++i2) {
-          ItemStack itemStack = ItemStack.of(itemListTag.getCompound(i2));
+          CompoundTag tag = itemListTag.getCompound(i2);
+          if (!tag.contains("id")) continue;
+          ItemStack itemStack = ItemStack.parse(lookup(), itemListTag.getCompound(i2)).orElse(ItemStack.EMPTY);
           rewardItems.add(itemStack);
         }
         rewardItemsMap.put(rewardKey, rewardItems);
@@ -242,8 +258,9 @@ public class RewardUserData extends SavedData {
     CompoundTag syncData = new CompoundTag();
     ListTag itemListTag = new ListTag();
     for (ItemStack itemStack : rewardItems) {
+      ItemStack toSave = itemStack.isEmpty() ? Rewards.getNormalFillItem() : itemStack;
       CompoundTag itemStackTag = new CompoundTag();
-      itemStack.save(itemStackTag);
+      toSave.save(server.registryAccess(), itemStackTag);
       itemListTag.add(itemStackTag);
     }
     syncData.put(ITEM_LIST_TAG, itemListTag);
@@ -367,7 +384,7 @@ public class RewardUserData extends SavedData {
   }
 
   @Override
-  public CompoundTag save(CompoundTag compoundTag) {
+  public @NotNull CompoundTag save(CompoundTag compoundTag, HolderLookup.Provider provider) {
     // Get a list of all keys which needs to be stored.
     Set<String> rewardKeys = new HashSet<>();
     rewardKeys.addAll(rewardItemsMap.keySet());
@@ -394,8 +411,9 @@ public class RewardUserData extends SavedData {
       ListTag itemListTag = new ListTag();
       List<ItemStack> rewardItems = rewardItemsMap.get(rewardKey);
       for (ItemStack itemStack : rewardItems) {
+        ItemStack toSave = itemStack.isEmpty() ? Rewards.getNormalFillItem() : itemStack;
         CompoundTag itemStackTag = new CompoundTag();
-        itemStack.save(itemStackTag);
+        toSave.save(server.registryAccess(), itemStackTag);
         itemListTag.add(itemStackTag);
       }
       rewardUserTag.put(ITEMS_TAG, itemListTag);

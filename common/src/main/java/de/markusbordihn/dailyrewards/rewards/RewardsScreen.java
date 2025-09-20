@@ -79,13 +79,13 @@ public class RewardsScreen {
 
             // User Rewards
             buffer.writeInt(rewardedDays);
-            buffer.writeUtf(lastRewardedDay);
+            buffer.writeUtf(lastRewardedDay != null ? lastRewardedDay : "");
             buffer.writeNbt(userRewardsForCurrentMonth);
             buffer.writeNbt(rewardsForCurrentMonth);
 
             // Special User Rewards
             buffer.writeInt(specialRewardedDays);
-            buffer.writeUtf(lastSpecialRewardedDay);
+            buffer.writeUtf(lastSpecialRewardedDay != null ? lastSpecialRewardedDay : "");
             buffer.writeNbt(specialUserRewardsForCurrentMonth);
             buffer.writeNbt(specialRewardsForCurrentMonth);
           }
@@ -126,7 +126,7 @@ public class RewardsScreen {
 
             // User Rewards
             buffer.writeInt(rewardedDays);
-            buffer.writeUtf(lastRewardedDay);
+            buffer.writeUtf(lastRewardedDay != null ? lastRewardedDay : "");
             buffer.writeNbt(userRewardsForCurrentMonth);
             buffer.writeNbt(rewardsForCurrentMonth);
           }
